@@ -1,0 +1,12 @@
+[tool.black]
+line-length = 88
+target-version = ['py38']
+# skip-string-normalization = true
+fast = true
+
+[tool.isort]
+profile = "black"
+sections = ["FUTURE", "STDLIB", "TYPING", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+default_section = "THIRDPARTY"
+known_first_party = "govee"
+known_typing = ["typing"]
