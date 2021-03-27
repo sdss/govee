@@ -10,3 +10,4 @@ sections = ["FUTURE", "STDLIB", "TYPING", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLD
 default_section = "THIRDPARTY"
 known_first_party = "govee"
 known_typing = ["typing"]
+lines_after_imports = 2

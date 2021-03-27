@@ -14,14 +14,25 @@ from bleak import BleakScanner
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 
+
 ADDRESS = "E0:13:D5:71:D0:66"
 PORT = 1111
 
 
 class GoveeWatcher:
-    """Watches a Govee H5179 device and creates a TCP socket to request status."""
+    """Watches a Govee H5179 device and creates a TCP socket to request status.
 
-    def __init__(self, address, port):
+    Parameters
+    ----------
+    address
+        The MAC address of the H5179 device to watch.
+    port
+        The port on localhost on which the TCP server will be started. The server accepts
+        a single command, ``status``, and returns the temperature, humidity, battery, and
+        the time of the last update in a single line.
+    """
+
+    def __init__(self, address: str, port: int):
 
         self.address = address.upper()
         self.port = port
@@ -35,9 +46,12 @@ class GoveeWatcher:
         self.scanner.register_detection_callback(self.detection_callback)
 
     async def start(self):
+        """Starts the TCP server and the device discovery."""
 
         self.server = await asyncio.start_server(
-            self.handle_request, "127.0.0.1", self.port,
+            self.handle_request,
+            "127.0.0.1",
+            self.port,
         )
         await self.server.start_serving()
 
@@ -48,6 +62,7 @@ class GoveeWatcher:
             await asyncio.sleep(1)
 
     def detection_callback(self, device: BLEDevice, data: AdvertisementData):
+        """Called when an update is received from the bluetooth device."""
 
         if device.address.upper() != self.address:
             return
@@ -75,8 +90,11 @@ class GoveeWatcher:
         self.last_update = datetime.utcnow()
 
     async def handle_request(
-        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter,
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
     ):
+        """Handle connections to the TCP server."""
 
         while True:
             try:
@@ -95,7 +113,6 @@ class GoveeWatcher:
 
 
 async def run():
-
     watcher = GoveeWatcher(ADDRESS, PORT)
     await watcher.start()
 
