@@ -4,7 +4,7 @@ This code implements a watcher for the [Govee H5179](https://store.govee.com/pro
 
 The temperature, humidity, and battery data are encoded in the manufacturer data package. The last five bytes represent the temperature (two bytes), humidity (two bytes), and battery (one byte).
 
-While running, the code creates a TCP server on port 1111 (default) which accepts a single command `status`. It returns, in a single line, the temperature, humidity, battery, and time at which the values were last seen.
+While running, the code creates a TCP server on port 1111 (default) which accepts a single command `status`. It returns, in a single line, the address, temperature, humidity, battery, and time at which the values were last seen.
 
 ## Installation
 

@@ -28,8 +28,8 @@ class GoveeWatcher:
         The MAC address of the H5179 device to watch.
     port
         The port on localhost on which the TCP server will be started. The server accepts
-        a single command, ``status``, and returns the temperature, humidity, battery, and
-        the time of the last update in a single line.
+        a single command, ``status``, and returns the address, temperature, humidity,
+        battery, and the time of the last update in a single line.
     """
 
     def __init__(self, address: str, port: int):
@@ -102,7 +102,7 @@ class GoveeWatcher:
 
                 if data.decode().strip().lower() == "status":
                     writer.write(
-                        f"{self.temperature} {self.humidity} "
+                        f"{self.address} {self.temperature} {self.humidity} "
                         f"{self.battery} {self.last_update.isoformat()}\n".encode()
                     )
 
