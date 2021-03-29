@@ -82,7 +82,11 @@ class GoveeWatcher:
         except Exception:
             return
 
-        # TODO: negative temperatures are stored as two's complement.
+        # Negative values are encoded as two's complement of int16.
+        if temp & (1 << 15):
+            temp = temp - (1 << 16)
+        if hum & (1 << 15):
+            hum = hum - (1 << 16)
 
         self.temperature = temp / 100
         self.humidity = hum / 100
