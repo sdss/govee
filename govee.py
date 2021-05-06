@@ -7,6 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
 import asyncio
+import re
 import struct
 from datetime import datetime
 
@@ -142,7 +143,24 @@ class GoveeWatcher:
             try:
                 data = await reader.readline()
 
-                if data.decode().strip().lower() == "status":
+                command = data.decode().strip().lower()
+                command_has_address = re.match('^status ((?:[0-9A-F]:?)+)', command)
+
+                if command_has_address:
+                    command_address = command_has_address.groups[0]
+                    if command_address not in self.temperature:
+                        writer.write(b'?\n')
+                    else:
+                        writer.write(
+                            f"{command_address} {self.temperature[command_address]} "
+                            f"{self.humidity[command_address]} "
+                            f"{self.battery[command_address]} "
+                            f"{self.last_update[command_address].isoformat()}\n".encode()
+                        )
+                    await writer.drain()
+                    continue
+
+                if command.startswith("status"):
                     for address in self.temperature:
                         writer.write(
                             f"{address} {self.temperature[address]} "
@@ -150,6 +168,7 @@ class GoveeWatcher:
                             f"{self.battery[address]} "
                             f"{self.last_update[address].isoformat()}\n".encode()
                         )
+                        await writer.drain()
 
                 if reader.at_eof():
                     return
