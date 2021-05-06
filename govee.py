@@ -37,12 +37,13 @@ class GoveeWatcher:
 
     Parameters
     ----------
-    address
-        The MAC address of the H5179 device to watch.
+    addresses
+        A mapping of the MAC addresses of the H5179 devices to watch to the model of
+        device.
     port
-        The port on localhost on which the TCP server will be started. The server accepts
-        a single command, ``status``, and returns the address, temperature, humidity,
-        battery, and the time of the last update in a single line.
+        The port on localhost on which the TCP server will be started. The server
+        accepts a single command, ``status``, and returns the address, temperature,
+        humidity, battery, and the time of the last update in a single line.
     """
 
     def __init__(self, addresses: dict[str, str], port: int):
@@ -79,20 +80,20 @@ class GoveeWatcher:
 
         address = device.address.upper()
 
-        if address not in self.address:
+        if address not in self.addresses:
             return
 
-        if 34817 not in data.manufacturer_data:
-            return
-
-        device_data: bytes = data.manufacturer_data[34817]
-
-        if self.address[address] == 'H5179':
+        if self.addresses[address] == 'H5179':
 
             # The temperature, humidity, and batter are the last 5 bytes in the
             # manufacturer data (not sure what the others are). Temperature and humidity
             # are uint8, while battery is a char (one byte). The data is little endian.
             # Reference: https://bit.ly/2Pvssx9
+
+            if 34817 not in data.manufacturer_data:
+                return
+
+            device_data: bytes = data.manufacturer_data[34817]
 
             try:
                 temp, hum, bat = struct.unpack_from("<HHB", device_data[-5:])
@@ -105,19 +106,28 @@ class GoveeWatcher:
             if hum & (1 << 15):
                 hum = hum - (1 << 16)
 
-        elif self.address[address] == 'H5072':
+            temp /= 100
+            hum /= 100
 
-            mfg_data_5075 = hex_string(device_data[3:6]).replace(" ", "")
+        elif self.addresses[address] == 'H5072':
+
+            if 60552 not in data.manufacturer_data:
+                return
+
+            device_data: bytes = data.manufacturer_data[60552]
+
+            mfg_data_5075 = hex_string(device_data[1:4]).replace(" ", "")
             packet = int(mfg_data_5075, 16)
-            temp = decode_temps_h5072(self.packet)
-            hum = float((self.packet % 1000) / 10)
-            bat = int(device_data[6])
+
+            temp = decode_temps_h5072(packet)
+            hum = float((packet % 1000) / 10)
+            bat = int(device_data[4])
 
         else:
             return
 
-        self.temperature[address] = temp / 100
-        self.humidity[address] = hum / 100
+        self.temperature[address] = temp
+        self.humidity[address] = hum
         self.battery[address] = bat
         self.last_update[address] = datetime.utcnow()
 
