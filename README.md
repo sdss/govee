@@ -1,10 +1,10 @@
-# Govee H5179
+# Govee H5179/H5072
 
-This code implements a watcher for the [Govee H5179](https://store.govee.com/products/wi-fi-temperature-humidity-sensor) sensor. The device reports the temperature, humidity, and battery as a Bluetooth Low Energy broadcast. This code continuously listens to the available device, identifies the device matching the MAC address, and reads the sensor data.
+This code implements a watcher for the [Govee H5179](https://store.govee.com/products/wi-fi-temperature-humidity-sensor) or [Govee 5072 sensors](https://www.amazon.com/Bluetooth-Temperature-Thermometer-Hygrometer-Calibration/dp/B07DWMJKP5). The device reports the temperature, humidity, and battery as a Bluetooth Low Energy broadcast. This code continuously listens to the available device, identifies the device matching the MAC address, and reads the sensor data.
 
-The temperature, humidity, and battery data are encoded in the manufacturer data package. The last five bytes represent the temperature (two bytes), humidity (two bytes), and battery (one byte).
+For the H5279, the temperature, humidity, and battery data are encoded in the manufacturer data package. The last five bytes represent the temperature (two bytes), humidity (two bytes), and battery (one byte).
 
-While running, the code creates a TCP server on port 1111 (default) which accepts a single command `status`. It returns, in a single line, the address, temperature, humidity, battery, and time at which the values were last seen.
+While running, the code creates a TCP server on port 1111 (default) which accepts a single command `status`. It returns of line per device with the address, temperature, humidity, battery, and time at which the values were last seen.
 
 ## Installation
 

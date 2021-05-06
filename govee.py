@@ -15,8 +15,21 @@ from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 
 
-ADDRESS = "E0:13:D5:71:D0:66"
+ADDRESSES = {"E0:13:D5:71:D0:66": "H5179", "A4:C1:38:82:A2:88": "H5072"}
 PORT = 1111
+
+
+def hex_string(data):
+    return "".join("{:02x} ".format(x) for x in data)
+
+
+def decode_temps_h5072(packet_value: int) -> float:
+    """Decode potential negative temperatures."""
+    # https://github.com/Thrilleratplay/GoveeWatcher/issues/2
+
+    if packet_value & 0x800000:
+        return float((packet_value ^ 0x800000) / -10000)
+    return float(packet_value / 10000)
 
 
 class GoveeWatcher:
@@ -32,15 +45,15 @@ class GoveeWatcher:
         battery, and the time of the last update in a single line.
     """
 
-    def __init__(self, address: str, port: int):
+    def __init__(self, addresses: dict[str, str], port: int):
 
-        self.address = address.upper()
+        self.addresses = addresses
         self.port = port
 
-        self.humidity = 0.0
-        self.temperature = 0.0
-        self.battery = 0.0
-        self.last_update = datetime.utcnow()
+        self.humidity = {}
+        self.temperature = {}
+        self.battery = {}
+        self.last_update = {}
 
         self.scanner = BleakScanner()
         self.scanner.register_detection_callback(self.detection_callback)
@@ -64,7 +77,9 @@ class GoveeWatcher:
     def detection_callback(self, device: BLEDevice, data: AdvertisementData):
         """Called when an update is received from the bluetooth device."""
 
-        if device.address.upper() != self.address:
+        address = device.address.upper()
+
+        if address not in self.address:
             return
 
         if 34817 not in data.manufacturer_data:
@@ -72,26 +87,39 @@ class GoveeWatcher:
 
         device_data: bytes = data.manufacturer_data[34817]
 
-        # The temperature, humidity, and batter are the last 5 bytes in the
-        # manufacturer data (not sure what the others are). Temperature and humidity
-        # are uint8, while battery is a char (one byte). The data is little endian.
-        # Reference: https://bit.ly/2Pvssx9
+        if self.address[address] == 'H5179':
 
-        try:
-            temp, hum, bat = struct.unpack_from("<HHB", device_data[-5:])
-        except Exception:
+            # The temperature, humidity, and batter are the last 5 bytes in the
+            # manufacturer data (not sure what the others are). Temperature and humidity
+            # are uint8, while battery is a char (one byte). The data is little endian.
+            # Reference: https://bit.ly/2Pvssx9
+
+            try:
+                temp, hum, bat = struct.unpack_from("<HHB", device_data[-5:])
+            except Exception:
+                return
+
+            # Negative values are encoded as two's complement of int16.
+            if temp & (1 << 15):
+                temp = temp - (1 << 16)
+            if hum & (1 << 15):
+                hum = hum - (1 << 16)
+
+        elif self.address[address] == 'H5072':
+
+            mfg_data_5075 = hex_string(device_data[3:6]).replace(" ", "")
+            packet = int(mfg_data_5075, 16)
+            temp = decode_temps_h5072(self.packet)
+            hum = float((self.packet % 1000) / 10)
+            bat = int(device_data[6])
+
+        else:
             return
 
-        # Negative values are encoded as two's complement of int16.
-        if temp & (1 << 15):
-            temp = temp - (1 << 16)
-        if hum & (1 << 15):
-            hum = hum - (1 << 16)
-
-        self.temperature = temp / 100
-        self.humidity = hum / 100
-        self.battery = bat
-        self.last_update = datetime.utcnow()
+        self.temperature[address] = temp / 100
+        self.humidity[address] = hum / 100
+        self.battery[address] = bat
+        self.last_update[address] = datetime.utcnow()
 
     async def handle_request(
         self,
@@ -105,10 +133,13 @@ class GoveeWatcher:
                 data = await reader.readline()
 
                 if data.decode().strip().lower() == "status":
-                    writer.write(
-                        f"{self.address} {self.temperature} {self.humidity} "
-                        f"{self.battery} {self.last_update.isoformat()}\n".encode()
-                    )
+                    for address in self.temperature:
+                        writer.write(
+                            f"{address} {self.temperature[address]} "
+                            f"{self.humidity[address]} "
+                            f"{self.battery[address]} "
+                            f"{self.last_update[address].isoformat()}\n".encode()
+                        )
 
                 if reader.at_eof():
                     return
@@ -117,7 +148,7 @@ class GoveeWatcher:
 
 
 async def run():
-    watcher = GoveeWatcher(ADDRESS, PORT)
+    watcher = GoveeWatcher(ADDRESSES, PORT)
     await watcher.start()
 
 
