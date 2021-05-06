@@ -65,7 +65,7 @@ class GoveeWatcher:
 
         self.server = await asyncio.start_server(
             self.handle_request,
-            "127.0.0.1",
+            "0.0.0.0",
             self.port,
         )
         await self.server.start_serving()
