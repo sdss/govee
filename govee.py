@@ -144,10 +144,10 @@ class GoveeWatcher:
                 data = await reader.readline()
 
                 command = data.decode().strip().lower()
-                command_has_address = re.match('^status ((?:[0-9A-F]:?)+)', command)
-
+                command_has_address = re.match('^status ((?:[0-9a-f]:?)+)', command)
+                
                 if command_has_address:
-                    command_address = command_has_address.groups[0]
+                    command_address = command_has_address.groups()[0].upper()
                     if command_address not in self.temperature:
                         writer.write(b'?\n')
                     else:
